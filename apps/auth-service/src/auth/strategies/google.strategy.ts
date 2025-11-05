@@ -1,15 +1,29 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Optional } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
 import { Strategy, VerifyCallback } from 'passport-google-oauth20'
 import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-  constructor(private configService: ConfigService) {
+  constructor(@Optional() private configService: ConfigService) {
+    // Only initialize if Google credentials are provided
+    const clientID = configService?.get('GOOGLE_CLIENT_ID')
+    const clientSecret = configService?.get('GOOGLE_CLIENT_SECRET')
+
+    if (!clientID || !clientSecret) {
+      // Skip strategy initialization if credentials are missing
+      super({
+        clientID: 'dummy',
+        clientSecret: 'dummy',
+        callbackURL: 'http://localhost:4001/auth/google/callback',
+      })
+      return
+    }
+
     super({
-      clientID: configService.get('GOOGLE_CLIENT_ID'),
-      clientSecret: configService.get('GOOGLE_CLIENT_SECRET'),
-      callbackURL: configService.get('GOOGLE_CALLBACK_URL'),
+      clientID,
+      clientSecret,
+      callbackURL: configService.get('GOOGLE_CALLBACK_URL') || 'http://localhost:4001/auth/google/callback',
       scope: ['email', 'profile'],
     })
   }

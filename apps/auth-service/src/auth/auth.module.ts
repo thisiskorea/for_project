@@ -17,14 +17,37 @@ import { GithubStrategy } from './strategies/github.strategy'
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
+        secret: configService.get('JWT_SECRET') || 'default-secret-for-development',
         signOptions: {
-          expiresIn: configService.get('JWT_EXPIRES_IN'),
+          expiresIn: configService.get('JWT_EXPIRES_IN') || '7d',
         },
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    // Only provide OAuth strategies if credentials are configured
+    {
+      provide: 'OAUTH_STRATEGIES',
+      useFactory: (configService: ConfigService) => {
+        const strategies = []
+
+        // Only add Google strategy if configured
+        if (configService.get('GOOGLE_CLIENT_ID')) {
+          strategies.push(GoogleStrategy)
+        }
+
+        // Only add GitHub strategy if configured
+        if (configService.get('GITHUB_CLIENT_ID')) {
+          strategies.push(GithubStrategy)
+        }
+
+        return strategies
+      },
+      inject: [ConfigService],
+    },
+  ],
 })
 export class AuthModule {}

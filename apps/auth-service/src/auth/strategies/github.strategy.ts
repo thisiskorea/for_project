@@ -1,15 +1,29 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Optional } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
 import { Strategy } from 'passport-github2'
 import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
-  constructor(private configService: ConfigService) {
+  constructor(@Optional() private configService: ConfigService) {
+    // Only initialize if GitHub credentials are provided
+    const clientID = configService?.get('GITHUB_CLIENT_ID')
+    const clientSecret = configService?.get('GITHUB_CLIENT_SECRET')
+
+    if (!clientID || !clientSecret) {
+      // Skip strategy initialization if credentials are missing
+      super({
+        clientID: 'dummy',
+        clientSecret: 'dummy',
+        callbackURL: 'http://localhost:4001/auth/github/callback',
+      })
+      return
+    }
+
     super({
-      clientID: configService.get('GITHUB_CLIENT_ID'),
-      clientSecret: configService.get('GITHUB_CLIENT_SECRET'),
-      callbackURL: configService.get('GITHUB_CALLBACK_URL'),
+      clientID,
+      clientSecret,
+      callbackURL: configService.get('GITHUB_CALLBACK_URL') || 'http://localhost:4001/auth/github/callback',
       scope: ['user:email'],
     })
   }
